@@ -173,4 +173,21 @@ class Seq2Seq(nn.Module):
         # print(trg)
         # print(outputs)
         return outputs
+    
+    def configure_optimizers(self, weight_decay, learning_rate, betas, warmup=None):
+        optimizer = AdamOpt(torch.optim.Adam(self.parameters(), lr=learning_rate, betas=betas, weight_decay=weight_decay))
+        return optimizer
+    
+
+class AdamOpt(object):
+    "Optim wrapper that implements rate."
+    def __init__(self, optimizer):
+        self.optimizer = optimizer
+        
+    def step(self):
+        self.optimizer.step()
+        
+    def rate(self):
+        return self.optimizer.param_groups[0]["lr"]
+
 

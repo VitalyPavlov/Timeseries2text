@@ -72,14 +72,14 @@ class RunnerTrain:
             # labels = torch.cat(labels).permute(1,0,2).to(self.device)
             labels = torch.cat(labels).to(self.device)
 
-            self.optimizer.zero_grad()
+            self.optimizer.optimizer.zero_grad()
             if self.scaler:
                 with autocast():
                     outputs = self.model(inputs, labels)
                     loss = self.loss_fn(outputs.reshape(-1, self.vocab_size), labels[:, 1:].reshape(-1))
 
                     self.scaler.scale(loss).backward()
-                    self.scaler.step(self.optimizer)
+                    self.scaler.step(self.optimizer.optimizer)
                     self.scaler.update()
             else:
                 with torch.set_grad_enabled(True):
@@ -96,7 +96,10 @@ class RunnerTrain:
                 self.y_pred_batches += [outputs.data().cpu().numpy()]
 
             self.writer.add_scalar(
-                "BatchLoss/train", epoch_loss_train.val, self.run_count
+                "Batch Loss/train", epoch_loss_train.val, self.run_count
+            )
+            self.writer.add_scalar(
+                "Batch Learning rate/train", self.optimizer.rate(), self.run_count
             )
             self.run_count += 1
 
@@ -170,7 +173,7 @@ class RunnerValid:
                 self.y_pred_batches += list(np.ravel(y_pred))
 
             self.writer.add_scalar(
-                "BatchLoss/valid", epoch_loss_valid.val, self.run_count
+                "Batch Loss/valid", epoch_loss_valid.val, self.run_count
             )
             self.run_count += 1
 

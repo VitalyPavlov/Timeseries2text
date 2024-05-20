@@ -21,7 +21,8 @@ class FocalLoss(nn.Module):
                  alpha: Optional[Tensor] = None,
                  gamma: float = 0.,
                  reduction: str = 'mean',
-                 ignore_index: int = -100):
+                 ignore_index: int = -100,
+                 label_smoothing=None):
         """Constructor.
         Args:
             alpha (Tensor, optional): Weights for each class. Defaults to None.

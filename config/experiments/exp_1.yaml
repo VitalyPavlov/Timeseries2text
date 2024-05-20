@@ -1,3 +1,4 @@
+# @package _global_
 info:
   exp_name: "exp_1"
   debug_mode: False
@@ -6,7 +7,6 @@ path:
   base: "./data"
   train_file: "dataset.parquet"
   logger: "./logging"
-  tb_logger: "./logging"
   pretrained_weights: False
   pretrained_file: "./logging/exp_11/model.pt"
 
@@ -21,39 +21,28 @@ dataset:
 train:
   seed: 2022
   fp16: False
-  model:  'src.models.transformer.GPT'  # 'src.models.seq2seq.Seq2Seq' 'src.models.transformer.GPT'
   backbone: None
   batch_size_train: 64 # 64
   batch_size_valid: 32 # 8 1 shuffle False
   teacher_forcing_ratio: 1
-  loss: 'torch.nn.CrossEntropyLoss' # 'torch.nn.CrossEntropyLoss' 'src.metrics.focal_loss.FocalLoss'
+  loss: 'src.metrics.label_smoothing.LabelSmoothing'
+  label_smoothing: 0.1
   metric: 'src.metrics.fscore.get_metrics'
-  optimizer: 'torch.optim.Adam'
-  scheduler: "torch.optim.lr_scheduler.ReduceLROnPlateau"
+  scheduler: False
   epochs: 250
-  lr: 1e-3 # 2
   early_stop_patience: 30
   reduce_lr_factor: 0.25
   reduce_lr_patience: 7
   reduce_lr_min: 1e-6
   num_workers: 3
-
-rnn:
-  input_dim: 32
-  cnn_1_dim: 32
-  cnn_1_kernel_size: 16
-  cnn_1_stride: 1
-  hid_dim: 128
-  num_layers: 1
-  vocab_size: 10
-  n_embd: 3
-  block_size: 17
-
-transformer:
-  warmup: 10
+  lr: 0
+  warmup: 200
   weigth_decay: 1e-2
   beta1: 0.9
   beta2: 0.95
+
+model:
+  model_name: 'src.models.transformer.GPT'
   input_dim: 32
   cnn_1_dim: 48
   cnn_1_kernel_size: 16

@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class FocalLoss(nn.modules.loss._WeightedLoss):
-    def __init__(self, weight=None, gamma=2,reduction='mean'):
+    def __init__(self, weight=None, gamma=2,reduction='mean', label_smoothing=None):
         super(FocalLoss, self).__init__(weight,reduction=reduction)
         self.gamma = gamma
         self.weight = weight #weight parameter will act as the alpha parameter to balance class weights

@@ -349,13 +349,15 @@ class GPT(nn.Module):
         return outputs
 
     
-    def configure_optimizers(self, weight_decay, learning_rate, betas):
+    def configure_optimizers(self, weight_decay, learning_rate, betas, warmup=None):
         """
         This long function is unfortunately doing something very simple and is being very defensive:
         We are separating out all parameters of the model into two buckets: those that will experience
         weight decay for regularization and those that won't (biases, and layernorm/embedding weights).
         We are then returning the PyTorch optimizer object.
         """
+        if warmup is None:
+            warmup = 400
 
         # separate out all parameters to those that will and won't experience regularizing weight decay
         decay = set()
@@ -364,10 +366,6 @@ class GPT(nn.Module):
 
         no_decay = set([n for n,p in self.named_parameters() if any(nd in n for nd in blacklist_modules)])
         decay = set([n for n,p in self.named_parameters() if not any(nd in n for nd in blacklist_modules)])
-        # print(no_decay)
-        # print('decoder.lm_head.weight' in no_decay)
-        # print(decay)
-        # print('decoder.lm_head.weight' in decay)
 
         # validate that we considered every parameter
         param_dict = {pn: p for pn, p in self.named_parameters()}
@@ -383,11 +381,10 @@ class GPT(nn.Module):
             {"params": [param_dict[pn] for pn in sorted(list(no_decay))], "weight_decay": 0.0},
         ]
 
-        # input_dim = sum(p.numel() for p in self.parameters())
-        # optimizer = NoamOpt(input_dim, 5,
-        #                     torch.optim.AdamW(optim_groups, lr=learning_rate, betas=betas))
+        input_dim = sum(p.numel() for p in self.encoder.parameters())
+        optimizer = NoamOpt(input_dim, warmup,
+                            torch.optim.AdamW(optim_groups, lr=learning_rate, betas=betas))
 
-        optimizer = torch.optim.AdamW(optim_groups, lr=learning_rate, betas=betas)
         return optimizer
 
 

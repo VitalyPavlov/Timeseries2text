@@ -28,10 +28,7 @@ from src.models.transformer import NoamOpt
 def main(cfg: DictConfig):
     # create logger
     logger = logging.getLogger(__name__)
-    log_dir = Path(cfg.path.logger).joinpath(cfg.info.exp_name)
-    fh = logging.FileHandler(log_dir.joinpath("run.log"))
-    fh.setLevel(logging.DEBUG)
-    logger.addHandler(fh)
+
     
     # set random seed for all modules
     seed_everything(seed=cfg.train.seed)
@@ -74,6 +71,7 @@ def main(cfg: DictConfig):
     # load model
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+    logger.info(f"model: {cfg.model.model_name}")
     logger.info(f"fold: {cfg.dataset.fold}")
     logger.info(f"device {device}")
     logger.info(
@@ -81,14 +79,8 @@ def main(cfg: DictConfig):
     )
     logger.info("epoch, lr, train_loss, valid_loss, valid_metric, best_metric")
 
-    if cfg.train.model == 'src.models.seq2seq.Seq2Seq':
-        vocab_size = cfg.rnn.vocab_size
-        model = locate(cfg.train.model)(cfg.rnn)
-
-    elif cfg.train.model == 'src.models.transformer.GPT':
-        vocab_size = cfg.transformer.vocab_size
-        model = locate(cfg.train.model)(cfg.transformer)
-
+    vocab_size = cfg.model.vocab_size
+    model = locate(cfg.model.model_name)(cfg.model)
     model = model.to(device)
 
     # add pretained weights
@@ -97,31 +89,29 @@ def main(cfg: DictConfig):
         model.load_state_dict(torch.load(pretrained_weights))
 
     if not cfg.info.debug_mode:
+        log_dir = Path(cfg.path.logger).joinpath(cfg.info.exp_name)
         writer = SummaryWriter(log_dir=log_dir)
 
     # Parameters for training
     scaler = GradScaler() if cfg.train.fp16 else None
-    loss_fn = locate(cfg.train.loss)()
+    loss_fn = locate(cfg.train.loss)(label_smoothing=float(cfg.train.label_smoothing))
     metric_fn = locate(cfg.train.metric)
-    if cfg.train.model == 'src.models.transformer.GPT':
-        optimizer = model.configure_optimizers(float(cfg.transformer.weigth_decay), float(cfg.train.lr), (float(cfg.transformer.beta1), float(cfg.transformer.beta2)))
-    else:
-        optimizer = locate(cfg.train.optimizer)(model.parameters(), lr=float(cfg.train.lr))
+    optimizer = model.configure_optimizers(weight_decay = float(cfg.train.weigth_decay), 
+                                           learning_rate = float(cfg.train.lr), 
+                                           betas = (float(cfg.train.beta1), float(cfg.train.beta2)),
+                                           warmup = float(cfg.train.warmup))
 
-    # if cfg.train.model == 'src.models.transformer.GPT':
-    #     # model_size = sum(p.numel() for p in model.encoder.parameters()) // 20
-    #     # scheduler = NoamOpt(model_size, cfg.transformer.warmup, optimizer)
-    #     # scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.002, steps_per_epoch=1, epochs=cfg.train.epochs, div_factor=2)
-    #     scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1, end_factor=0.8, total_iters=cfg.train.epochs)
-    # else:
-    scheduler = locate(cfg.train.scheduler)(
-        optimizer,
-        mode="max",
-        factor=float(cfg.train.reduce_lr_factor),
-        patience=int(cfg.train.reduce_lr_patience),
-        min_lr=float(cfg.train.reduce_lr_min),
-        verbose=True,
-    )
+    if cfg.train.scheduler:
+        scheduler = locate(cfg.train.scheduler)(
+            optimizer.optimizer,
+            mode="max",
+            factor=float(cfg.train.reduce_lr_factor),
+            patience=int(cfg.train.reduce_lr_patience),
+            min_lr=float(cfg.train.reduce_lr_min),
+            verbose=True,
+        )
+    else:
+        scheduler = None
 
     train_runner = RunnerTrain(
         model,
@@ -155,26 +145,21 @@ def main(cfg: DictConfig):
     best_model_wts = copy.deepcopy(model.state_dict())
 
     for epoch in range(cfg.train.epochs):
-        lr = optimizer.param_groups[0]["lr"]
-
         plot_pred = False # True if epoch % 2 == 0 else False
 
         train_runner.run_one_epoch()
         valid_runner.run_one_epoch(plot_pred)
         
-        # if cfg.train.model == 'src.models.transformer.GPT':
-        #     # print(lr)
-        #     # optimizer.step()
-        #     scheduler.step()
-        # else:
-        scheduler.step(valid_runner.metric_val)
+        lr = optimizer.rate()
+        if scheduler is not None:
+            scheduler.step(valid_runner.metric_val)
 
         if valid_runner.metric_val > best_metrics:
             best_metrics = valid_runner.metric_val
             best_model_wts = copy.deepcopy(model.state_dict())
             torch.save(best_model_wts, cfg.path.weights)
             early_stoping = 0
-            model_updated = "*"
+            model_updated = " *"
         else:
             early_stoping += 1
             model_updated = ""

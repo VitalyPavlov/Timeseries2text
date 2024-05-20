@@ -1,3 +1,53 @@
+# @package _global_
 info:
   exp_name: "exp_2"
   debug_mode: False
+
+path:
+  base: "./data"
+  train_file: "dataset.parquet"
+  logger: "./logging"
+  pretrained_weights: False
+  pretrained_file: "./logging/exp_11/model.pt"
+
+dataset: 
+  loader_train: 'src.data.dataset.Dataset_Train'
+  loader_valid: 'src.data.dataset.Dataset_Train'
+  augmentation: 'src.data.augmentation.aug_func'
+  preprocessing: 'src.utils.utils.preprocessing_32'
+  fold: 'train'
+  limit_by_length: False
+
+train:
+  seed: 2022
+  fp16: False
+  backbone: None
+  batch_size_train: 64 # 64
+  batch_size_valid: 32 # 8 1 shuffle False
+  teacher_forcing_ratio: 1
+  loss: 'torch.nn.CrossEntropyLoss' # 'torch.nn.CrossEntropyLoss' 'src.metrics.focal_loss.FocalLoss'
+  metric: 'src.metrics.fscore.get_metrics'
+  scheduler: "torch.optim.lr_scheduler.ReduceLROnPlateau"
+  epochs: 250
+  early_stop_patience: 30
+  reduce_lr_factor: 0.25
+  reduce_lr_patience: 7
+  reduce_lr_min: 1e-6
+  num_workers: 3
+  lr: 1e-3 # 2
+  warmup: 400
+  weigth_decay: 1e-2
+  beta1: 0.9
+  beta2: 0.95
+
+model:
+  model_name: 'src.models.seq2seq.Seq2Seq'
+  input_dim: 32
+  cnn_1_dim: 32
+  cnn_1_kernel_size: 16
+  cnn_1_stride: 1
+  hid_dim: 128
+  num_layers: 1
+  vocab_size: 10
+  n_embd: 3
+  block_size: 17
