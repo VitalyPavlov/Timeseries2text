@@ -1,0 +1,84 @@
+hydra:
+  run:
+    dir: "/Users/vitaly/Documents/Github_personal/Timeseries2text"
+  output_subdir: null
+  job_logging:
+    disable_existing_loggers: true
+    formatters:
+      simple:
+        format: '%(message)s'
+    console:
+      level: 'CRITICAL'
+    handlers:
+      file:
+        filename: '${path.logger}/train.log'
+        level: 'CRITICAL'
+
+info:
+  exp_name: "exp_1"
+  debug_mode: False
+
+path:
+  base: "./data"
+  train_file: "dataset.parquet"
+  logger: "./logging"
+  tb_logger: "./logging/tb/"
+  pretrained_weights: False
+  pretrained_file: "./logging/exp_11/model.pt"
+  weights: '${path.logger}/${info.exp_name}/${info.exp_name}_${dataset.fold}.pt'
+
+dataset: 
+  loader_train: 'src.data.dataset.Dataset_Train'
+  loader_valid: 'src.data.dataset.Dataset_Train'
+  augmentation: 'src.data.augmentation.aug_func'
+  preprocessing: 'src.utils.utils.preprocessing_32'
+  fold: 'train'
+  limit_by_length: False
+
+train:
+  seed: 2022
+  fp16: False
+  model:  'src.models.seq2seq.Seq2Seq'  # 'src.models.seq2seq.Seq2Seq' 'src.models.transformer.GPT'
+  backbone: None
+  batch_size_train: 64 # 64
+  batch_size_valid: 32 # 8 1 shuffle False
+  teacher_forcing_ratio: 1
+  loss: 'torch.nn.CrossEntropyLoss' # 'torch.nn.CrossEntropyLoss' 'src.metrics.focal_loss.FocalLoss'
+  metric: 'src.metrics.fscore.get_metrics'
+  optimizer: 'torch.optim.Adam'
+  scheduler: "torch.optim.lr_scheduler.ReduceLROnPlateau"
+  epochs: 250
+  lr: 1e-3 # 2
+  early_stop_patience: 30
+  reduce_lr_factor: 0.25
+  reduce_lr_patience: 7
+  reduce_lr_min: 1e-6
+  num_workers: 3
+
+rnn:
+  input_dim: 32
+  cnn_1_dim: 32
+  cnn_1_kernel_size: 16
+  cnn_1_stride: 1
+  hid_dim: 128
+  num_layers: 1
+  vocab_size: 10
+  n_embd: 3
+  block_size: 17
+
+transformer:
+  warmup: 10
+  weigth_decay: 1e-2
+  beta1: 0.9
+  beta2: 0.95
+  input_dim: 32
+  cnn_1_dim: 48
+  cnn_1_kernel_size: 16
+  cnn_1_stride: 1
+  n_layer: 4
+  n_head: 4
+  n_embd: 48
+  block_size: 17
+  dropout: 0.5
+  vocab_size: 10
+  bias: False

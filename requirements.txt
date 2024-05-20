@@ -1,0 +1,15 @@
+numpy
+pandas
+matplotlib
+pyarrow
+fastparquet
+scikit-learn
+torch
+fire
+addict
+tensorboard
+pyyaml
+tqdm
+omegaconf
+hydra-core
+protobuf==4.25

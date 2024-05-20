@@ -1,0 +1,4 @@
+venv/
+logging/*
+.DS_Store
+**.parquet
